@@ -18,10 +18,10 @@ FROM quay.io/opencloudeu/nodejs-ci:24 AS generate
 
 COPY ./ /opencloud/
 
-WORKDIR /opencloud/opencloud
+WORKDIR /opencloud
 RUN make node-generate-prod
 
-FROM golang:1.24-alpine AS build
+FROM golang:1.25-alpine AS build
 RUN apk add bash make git curl gcc musl-dev libc-dev binutils-gold inotify-tools vips-dev
 
 COPY --from=generate /opencloud /opencloud

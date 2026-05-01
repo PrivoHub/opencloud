@@ -116,6 +116,10 @@ func Server(cfg *config.Config) *cobra.Command {
 }
 
 func bootstrap(logger log.Logger, cfg *config.Config, srvcfg server.Config) error {
+	if err := loadAdminPasswordFile(cfg); err != nil {
+		return err
+	}
+
 	// Hash password if the config does not supply a hash already
 	var err error
 

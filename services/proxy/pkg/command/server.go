@@ -373,6 +373,7 @@ func loadMiddlewares(logger log.Logger, cfg *config.Config,
 			middleware.AutoprovisionAccounts(cfg.AutoprovisionAccounts),
 			middleware.MultiTenantEnabled(cfg.Commons.MultiTenantEnabled),
 			middleware.EventsPublisher(publisher),
+			middleware.PrivohubPersonalQuotaBytes(cfg.PrivohubPersonalQuotaBytes),
 		),
 		middleware.SelectorCookie(
 			middleware.Logger(logger),
