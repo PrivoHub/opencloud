@@ -87,7 +87,7 @@ func DefaultConfig() *config.Config {
 		GatewayAddress: "eu.opencloud.api.gateway",
 		Web: config.Web{
 			ThemeServer: "https://localhost:9200",
-			ThemePath:   "/themes/opencloud/theme.json",
+			ThemePath:   "/themes/privohub/theme.json",
 			Config: config.WebConfig{
 				Server: "https://localhost:9200",
 				Theme:  "",

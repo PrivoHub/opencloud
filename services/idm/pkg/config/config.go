@@ -34,8 +34,9 @@ type Settings struct {
 }
 
 type ServiceUserPasswords struct {
-	OCAdmin string `yaml:"admin_password" env:"IDM_ADMIN_PASSWORD" desc:"Password to set for the OpenCloud 'admin' user. Either cleartext or an argon2id hash." introductionVersion:"1.0.0"`
-	Idm     string `yaml:"idm_password" env:"IDM_SVC_PASSWORD" desc:"Password to set for the 'idm' service user. Either cleartext or an argon2id hash." introductionVersion:"1.0.0"`
-	Reva    string `yaml:"reva_password" env:"IDM_REVASVC_PASSWORD" desc:"Password to set for the 'reva' service user. Either cleartext or an argon2id hash." introductionVersion:"1.0.0"`
-	Idp     string `yaml:"idp_password" env:"IDM_IDPSVC_PASSWORD" desc:"Password to set for the 'idp' service user. Either cleartext or an argon2id hash." introductionVersion:"1.0.0"`
+	OCAdmin             string `yaml:"admin_password" env:"IDM_ADMIN_PASSWORD" desc:"Password to set for the OpenCloud 'admin' user. Either cleartext or an argon2id hash." introductionVersion:"1.0.0"`
+	OCAdminPasswordFile string `yaml:"admin_password_file" env:"PRIVOHUB_IDM_ADMIN_PASSWORD_FILE" desc:"PrivoHub: read the admin password from this file. Overrides admin_password / IDM_ADMIN_PASSWORD when readable." introductionVersion:"6.1.0"`
+	Idm                 string `yaml:"idm_password" env:"IDM_SVC_PASSWORD" desc:"Password to set for the 'idm' service user. Either cleartext or an argon2id hash." introductionVersion:"1.0.0"`
+	Reva                string `yaml:"reva_password" env:"IDM_REVASVC_PASSWORD" desc:"Password to set for the 'reva' service user. Either cleartext or an argon2id hash." introductionVersion:"1.0.0"`
+	Idp                 string `yaml:"idp_password" env:"IDM_IDPSVC_PASSWORD" desc:"Password to set for the 'idp' service user. Either cleartext or an argon2id hash." introductionVersion:"1.0.0"`
 }

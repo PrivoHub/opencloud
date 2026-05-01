@@ -47,6 +47,7 @@ type Config struct {
 	CSPConfigFileLocation         string              `yaml:"csp_config_file_location" env:"PROXY_CSP_CONFIG_FILE_LOCATION" desc:"The location of the CSP configuration file." introductionVersion:"1.0.0"`
 	CSPConfigFileOverrideLocation string              `yaml:"csp_config_file_override_location" env:"PROXY_CSP_CONFIG_FILE_OVERRIDE_LOCATION" desc:"The location of the CSP configuration file override." introductionVersion:"4.0.0"`
 	Events                        Events              `yaml:"events"`
+	PrivohubPersonalQuotaBytes    uint64              `yaml:"privohub_personal_quota_bytes" env:"PRIVOHUB_PERSONAL_QUOTA_BYTES" desc:"PrivoHub: per-user personal-drive quota in bytes, applied on every login. Zero disables." introductionVersion:"6.1.0"`
 
 	Context context.Context `json:"-" yaml:"-"`
 }

@@ -30,9 +30,9 @@ type AccountEditLink struct {
 
 // FeedbackLink are the feedback link options
 type FeedbackLink struct {
-	Href        string `json:"href,omitempty" yaml:"href" env:"WEB_OPTION_FEEDBACKLINK_HREF" desc:"Set a target URL for the feedback link. Make sure to prepend it with 'http(s)://'. Defaults to 'https://opencloud.eu/web-design-feedback'." introductionVersion:"1.0.0"`
-	AriaLabel   string `json:"ariaLabel,omitempty" yaml:"ariaLabel" env:"WEB_OPTION_FEEDBACKLINK_ARIALABEL" desc:"Since the feedback link only has an icon, a screen reader accessible label can be set. The text defaults to 'OpenCloud feedback survey'." introductionVersion:"1.0.0"`
-	Description string `json:"description,omitempty" yaml:"description" env:"WEB_OPTION_FEEDBACKLINK_DESCRIPTION" desc:"For feedbacks, provide any description you want to see as tooltip and as accessible description. Defaults to 'Provide your feedback: We'd like to improve the web design and would be happy to hear your feedback. Thank you! Your OpenCloud team'." introductionVersion:"1.0.0"`
+	Href        string `json:"href,omitempty" yaml:"href" env:"WEB_OPTION_FEEDBACKLINK_HREF" desc:"Set a target URL for the feedback link. Make sure to prepend it with 'http(s)://'. Empty by default — the feedback link is only rendered when an href is provided." introductionVersion:"1.0.0"`
+	AriaLabel   string `json:"ariaLabel,omitempty" yaml:"ariaLabel" env:"WEB_OPTION_FEEDBACKLINK_ARIALABEL" desc:"Since the feedback link only has an icon, a screen reader accessible label can be set. Empty by default." introductionVersion:"1.0.0"`
+	Description string `json:"description,omitempty" yaml:"description" env:"WEB_OPTION_FEEDBACKLINK_DESCRIPTION" desc:"For feedbacks, provide any description you want to see as tooltip and as accessible description. Empty by default." introductionVersion:"1.0.0"`
 }
 
 // Upload are the upload options
