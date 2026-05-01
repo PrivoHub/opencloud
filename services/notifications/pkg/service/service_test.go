@@ -122,8 +122,7 @@ Click here to view it: files/shares/with-me
 
 
 ---
-OpenCloud - a safe home for all your data
-https://opencloud.eu
+PrivoHub Drive — your private workspace
 `,
 			expectedSender: sharer.GetDisplayName(),
 			done:           make(chan struct{}),
@@ -147,8 +146,7 @@ Even though this share has been revoked you still might have access through othe
 
 
 ---
-OpenCloud - a safe home for all your data
-https://opencloud.eu
+PrivoHub Drive — your private workspace
 `,
 			expectedSender: sharer.GetDisplayName(),
 			done:           make(chan struct{}),
@@ -196,8 +194,7 @@ Click here to view it: f/spaceid
 
 
 ---
-OpenCloud - a safe home for all your data
-https://opencloud.eu
+PrivoHub Drive — your private workspace
 `,
 			expectedSender: sharer.GetDisplayName(),
 			done:           make(chan struct{}),
@@ -223,8 +220,7 @@ Click here to check it: f/spaceid
 
 
 ---
-OpenCloud - a safe home for all your data
-https://opencloud.eu
+PrivoHub Drive — your private workspace
 `,
 			expectedSender: sharer.GetDisplayName(),
 			done:           make(chan struct{}),
@@ -247,8 +243,7 @@ Even though this membership has expired you still might have access through othe
 
 
 ---
-OpenCloud - a safe home for all your data
-https://opencloud.eu
+PrivoHub Drive — your private workspace
 `,
 			expectedSender: "",
 			done:           make(chan struct{}),
@@ -363,8 +358,7 @@ Click here to view it: files/shares/with-me
 
 
 ---
-OpenCloud - a safe home for all your data
-https://opencloud.eu
+PrivoHub Drive — your private workspace
 `,
 			expectedHTMLBody: `<!DOCTYPE html>
 <html>
@@ -393,8 +387,7 @@ https://opencloud.eu
                             <br>
                             <br>
                             --- <br>
-                            OpenCloud - a safe home for all your data<br>
-                            <a href="https://opencloud.eu">https://opencloud.eu</a>
+                            PrivoHub Drive — your private workspace
                         </footer>
                     </td>
                 </tr>
@@ -431,8 +424,7 @@ Click here to view it: f/spaceid
 
 
 ---
-OpenCloud - a safe home for all your data
-https://opencloud.eu
+PrivoHub Drive — your private workspace
 `,
 			expectedSender: sharer.GetDisplayName(),
 			expectedHTMLBody: `<!DOCTYPE html>
@@ -462,8 +454,7 @@ https://opencloud.eu
                             <br>
                             <br>
                             --- <br>
-                            OpenCloud - a safe home for all your data<br>
-                            <a href="https://opencloud.eu">https://opencloud.eu</a>
+                            PrivoHub Drive — your private workspace
                         </footer>
                     </td>
                 </tr>

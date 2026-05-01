@@ -46,24 +46,32 @@ func AccountResolver(optionSetters ...Option) func(next http.Handler) http.Handl
 	)
 	go tenantIDCache.Start()
 
+	privohubQuotaApplyCache := ttlcache.New(
+		ttlcache.WithTTL[string, struct{}](5*time.Minute),
+		ttlcache.WithDisableTouchOnHit[string, struct{}](),
+	)
+	go privohubQuotaApplyCache.Start()
+
 	return func(next http.Handler) http.Handler {
 		return &accountResolver{
-			next:                   next,
-			logger:                 logger,
-			tracer:                 tracer,
-			userProvider:           options.UserProvider,
-			userOIDCClaim:          options.UserOIDCClaim,
-			userCS3Claim:           options.UserCS3Claim,
-			tenantOIDCClaim:        options.TenantOIDCClaim,
-			tenantIDMappingEnabled: options.TenantIDMappingEnabled,
-			gatewaySelector:        options.RevaGatewaySelector,
-			serviceAccount:         options.ServiceAccount,
-			userRoleAssigner:       options.UserRoleAssigner,
-			autoProvisionAccounts:  options.AutoprovisionAccounts,
-			multiTenantEnabled:     options.MultiTenantEnabled,
-			lastGroupSyncCache:     lastGroupSyncCache,
-			tenantIDCache:          tenantIDCache,
-			eventsPublisher:        options.EventsPublisher,
+			next:                       next,
+			logger:                     logger,
+			tracer:                     tracer,
+			userProvider:               options.UserProvider,
+			userOIDCClaim:              options.UserOIDCClaim,
+			userCS3Claim:               options.UserCS3Claim,
+			tenantOIDCClaim:            options.TenantOIDCClaim,
+			tenantIDMappingEnabled:     options.TenantIDMappingEnabled,
+			gatewaySelector:            options.RevaGatewaySelector,
+			serviceAccount:             options.ServiceAccount,
+			userRoleAssigner:           options.UserRoleAssigner,
+			autoProvisionAccounts:      options.AutoprovisionAccounts,
+			multiTenantEnabled:         options.MultiTenantEnabled,
+			lastGroupSyncCache:         lastGroupSyncCache,
+			tenantIDCache:              tenantIDCache,
+			eventsPublisher:            options.EventsPublisher,
+			privohubPersonalQuotaBytes: options.PrivohubPersonalQuotaBytes,
+			privohubQuotaApplyCache:    privohubQuotaApplyCache,
 		}
 	}
 }
@@ -89,6 +97,10 @@ type accountResolver struct {
 	// tenantIDCache maps external tenant IDs (from OIDC claims) to internal tenant IDs.
 	tenantIDCache   *ttlcache.Cache[string, string]
 	eventsPublisher events.Publisher
+	// privohubPersonalQuotaBytes, when > 0, is written to each user's personal storage space on
+	// every login (cached per user via privohubQuotaApplyCache). Zero disables the feature.
+	privohubPersonalQuotaBytes uint64
+	privohubQuotaApplyCache    *ttlcache.Cache[string, struct{}]
 }
 
 func readStringClaim(path string, claims map[string]any) (string, error) {
@@ -265,6 +277,12 @@ func (m accountResolver) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			m.logger.Error().Err(err).Msg("Could not get user by claim")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
+		}
+	}
+
+	if m.privohubPersonalQuotaBytes > 0 && user != nil {
+		if err := m.applyPersonalQuota(ctx, user); err != nil {
+			m.logger.Debug().Err(err).Str("userid", user.GetId().GetOpaqueId()).Msg("privohub: failed to apply personal quota")
 		}
 	}
 

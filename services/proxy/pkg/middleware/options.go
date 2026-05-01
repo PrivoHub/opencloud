@@ -82,6 +82,8 @@ type Options struct {
 	// ServiceAccount holds credentials used to authenticate internal service calls (e.g. TenantAPI lookups).
 	ServiceAccount         config.ServiceAccount
 	EventsPublisher        events.Publisher
+	// PrivohubPersonalQuotaBytes is the per-user personal-drive quota applied on every login. Zero disables.
+	PrivohubPersonalQuotaBytes uint64
 }
 
 // newOptions initializes the available default options.
@@ -283,5 +285,13 @@ func TenantIDMappingEnabled(val bool) Option {
 func EventsPublisher(ep events.Publisher) Option {
 	return func(o *Options) {
 		o.EventsPublisher = ep
+	}
+}
+
+// PrivohubPersonalQuotaBytes sets the personal-drive quota applied to every authenticated user
+// on each request (cached for 5 minutes per user). Zero disables the feature.
+func PrivohubPersonalQuotaBytes(val uint64) Option {
+	return func(o *Options) {
+		o.PrivohubPersonalQuotaBytes = val
 	}
 }
