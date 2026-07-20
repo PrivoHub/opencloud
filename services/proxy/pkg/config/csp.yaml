@@ -6,6 +6,7 @@ directives:
     - 'blob:'
     - 'https://raw.githubusercontent.com/opencloud-eu/awesome-apps/'
     - 'https://update.opencloud.eu/'
+    - '${PROXY_CSP_OIDC_ORIGIN}'
   default-src:
     - '''none'''
   font-src:
@@ -31,6 +32,7 @@ directives:
   script-src:
     - '''self'''
     - '''unsafe-inline'''
+    - '''unsafe-eval'''
   style-src:
     - '''self'''
     - '''unsafe-inline'''
