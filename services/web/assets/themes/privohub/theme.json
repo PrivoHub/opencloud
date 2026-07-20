@@ -1,0 +1,177 @@
+{
+  "common": {
+    "name": "PrivoHub Drive",
+    "slogan": "Your private workspace",
+    "logo": "themes/privohub/assets/logo.svg",
+    "urls": {
+      "accessDeniedHelp": "",
+      "imprint": "",
+      "privacy": "",
+      "accessibility": ""
+    },
+    "shareRoles": {
+      "b1e2218d-eef8-4d4c-b82d-0f1a1b48f3b5": {
+        "name": "UnifiedRoleViewer",
+        "iconName": "eye"
+      },
+      "a8d5fe5e-96e3-418d-825b-534dbdf22b99": {
+        "label": "UnifiedRoleSpaceViewer",
+        "iconName": "eye"
+      },
+      "2d00ce52-1fc2-4dbc-8b95-a73b73395f5a": {
+        "label": "UnifiedRoleFileEditor",
+        "iconName": "pencil"
+      },
+      "fb6c3e19-e378-47e5-b277-9732f9de6e21": {
+        "label": "UnifiedRoleEditor",
+        "iconName": "pencil"
+      },
+      "58c63c02-1d89-4572-916a-870abc5a1b7d": {
+        "label": "UnifiedRoleSpaceEditor",
+        "iconName": "pencil"
+      },
+      "312c0871-5ef7-4b3a-85b6-0e4074c64049": {
+        "label": "UnifiedRoleManager",
+        "iconName": "user-star"
+      },
+      "1c996275-f1c9-4e71-abdf-a42f6495e960": {
+        "label": "UnifiedRoleUploader",
+        "iconName": "upload"
+      },
+      "aa97fe03-7980-45ac-9e50-b325749fd7e6": {
+        "label": "UnifiedRoleSecureView",
+        "iconName": "shield"
+      }
+    }
+  },
+  "clients": {
+    "android": {},
+    "desktop": {},
+    "ios": {},
+    "web": {
+      "defaults": {
+        "logo": "themes/privohub/assets/logo.svg",
+        "logoMobile": "themes/privohub/assets/logo-mobile.svg",
+        "favicon": "themes/privohub/assets/favicon.svg"
+      },
+      "themes": [
+        {
+          "isDark": false,
+          "label": "Light Theme",
+          "designTokens": {
+            "roles": {
+              "primary": "#3C73DE",
+              "onPrimary": "#ffffff",
+              "primaryContainer": "#dbe6ff",
+              "onPrimaryContainer": "#001a40",
+              "secondary": "#2b4a8a",
+              "onSecondary": "#ffffff",
+              "secondaryContainer": "#dbe6ff",
+              "onSecondaryContainer": "#0a1d3f",
+              "tertiary": "#5a5c7e",
+              "onTertiary": "#ffffff",
+              "tertiaryContainer": "#e0e0ff",
+              "onTertiaryContainer": "#171937",
+              "error": "#ba1a1a",
+              "onError": "#ffffff",
+              "errorContainer": "#ffdad6",
+              "onErrorContainer": "#410002",
+              "background": "#ffffff",
+              "onBackground": "#191c1d",
+              "surface": "#ffffff",
+              "onSurface": "#191c1d",
+              "surfaceVariant": "#dde2eb",
+              "onSurfaceVariant": "#42454c",
+              "outline": "#72757c",
+              "outlineVariant": "#c2c5cc",
+              "shadow": "#000000",
+              "scrim": "#000000",
+              "inverseSurface": "#2e3132",
+              "inverseOnSurface": "#eff1f2",
+              "inversePrimary": "#aec5ff",
+              "primaryFixed": "#dbe6ff",
+              "onPrimaryFixed": "#001a40",
+              "secondaryFixed": "#dbe6ff",
+              "onSecondaryFixed": "#0a1d3f",
+              "tertiaryFixed": "#e0e0ff",
+              "onTertiaryFixed": "#171937",
+              "surfaceDim": "#d8dadc",
+              "surfaceBright": "#f8f9fb",
+              "surfaceContainerLowest": "#ffffff",
+              "surfaceContainerLow": "#fbfcfe",
+              "surfaceContainer": "#f6f8fa",
+              "surfaceContainerHigh": "#f2f4f5",
+              "surfaceContainerHighest": "#eceef0",
+              "chrome": "#2b4a8a",
+              "onChrome": "#ffffff"
+            },
+            "colorPalette": {
+              "icon-archive": "#fbbe54",
+              "icon-audio": "#700460",
+              "icon-document": "#3b44a6",
+              "icon-folder": "#3C73DE",
+              "icon-image": "#ee6b3b",
+              "icon-medical": "#0984db",
+              "icon-pdf": "#ec0d47",
+              "icon-presentation": "#ee6b3b",
+              "icon-spreadsheet": "#15c286",
+              "icon-video": "#045459"
+            }
+          }
+        },
+        {
+          "isDark": true,
+          "label": "Dark Theme",
+          "logo": "themes/privohub/assets/logo-white.svg",
+          "logoMobile": "themes/privohub/assets/logo-white-mobile.svg",
+          "designTokens": {
+            "roles": {
+              "primary": "#aec5ff",
+              "onPrimary": "#002a6b",
+              "primaryContainer": "#1f4496",
+              "onPrimaryContainer": "#dbe6ff",
+              "secondary": "#b9c7e6",
+              "onSecondary": "#243049",
+              "secondaryContainer": "#3a4760",
+              "onSecondaryContainer": "#dbe6ff",
+              "tertiary": "#c3c3eb",
+              "onTertiary": "#2c2e4d",
+              "tertiaryContainer": "#424465",
+              "onTertiaryContainer": "#e0e0ff",
+              "error": "#ffb4ab",
+              "onError": "#690005",
+              "errorContainer": "#93000a",
+              "onErrorContainer": "#ffb4ab",
+              "background": "#191c1d",
+              "onBackground": "#e1e3e4",
+              "surface": "#191c1d",
+              "onSurface": "#e1e3e4",
+              "surfaceVariant": "#42454c",
+              "onSurfaceVariant": "#c2c5cc",
+              "outline": "#8c9097",
+              "outlineVariant": "#42454c",
+              "shadow": "#000000",
+              "scrim": "#000000",
+              "inverseSurface": "#e1e3e4",
+              "inverseOnSurface": "#2e3132",
+              "inversePrimary": "#3C73DE",
+              "primaryFixed": "#dbe6ff",
+              "onPrimaryFixed": "#001a40",
+              "secondaryFixed": "#dbe6ff",
+              "onSecondaryFixed": "#0a1d3f",
+              "tertiaryFixed": "#e0e0ff",
+              "onTertiaryFixed": "#171937",
+              "surfaceDim": "#111415",
+              "surfaceBright": "#373a3b",
+              "surfaceContainerLowest": "#0c0f10",
+              "surfaceContainerLow": "#191c1d",
+              "surfaceContainer": "#1d2021",
+              "surfaceContainerHigh": "#272a2c",
+              "surfaceContainerHighest": "#323537"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
