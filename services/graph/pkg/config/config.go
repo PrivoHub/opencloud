@@ -42,6 +42,8 @@ type Config struct {
 
 	UserSoftDeleteRetentionTime time.Duration `yaml:"user_soft_delete_retention_time" env:"GRAPH_USER_SOFT_DELETE_RETENTION_TIME" desc:"The time after which a soft-deleted user is permanently deleted. If set to 0 (default), there is no soft delete retention time and users are deleted immediately after being soft-deleted. If set to a positive value, the user will be kept in the system for that duration before being permanently deleted." introductionVersion:"4.0.0"`
 
+	PrivohubFilesystemUsagePath string `yaml:"privohub_filesystem_usage_path" env:"PRIVOHUB_FILESYSTEM_USAGE_PATH" desc:"PrivoHub: when set, personal-drive quota reports the real filesystem usage (statfs, df-style) of this path instead of the OpenCloud tree size. The OpenCloud data dir and Immich uploads share one ZFS dataset (refquota = plan size), so statfs here reflects combined Photos + Drive consumption against the hard cap. Empty disables." introductionVersion:"6.1.0"`
+
 	Store Store `yaml:"store"`
 }
 

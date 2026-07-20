@@ -953,6 +953,34 @@ func (g Graph) getDriveQuota(ctx context.Context, space *storageprovider.Storage
 		total = int64(res.TotalBytes)
 	}
 
+	// PrivoHub: report real filesystem usage for the personal drive so the figure
+	// includes Immich Photos (which shares the same ZFS dataset), not just the
+	// OpenCloud tree size. The configured path is statfs'd; its used bytes reflect
+	// the whole dataset against the refquota hard cap. Total stays the plan quota
+	// when set (it may differ from refquota after a grow-only downgrade); remaining
+	// is recomputed so the three values stay consistent.
+	if g.config.PrivohubFilesystemUsagePath != "" && space.GetSpaceType() == _spaceTypePersonal {
+		fsTotal, fsUsed, fsRemaining, fsErr := privohubFilesystemQuota(g.config.PrivohubFilesystemUsagePath)
+		if fsErr != nil {
+			logger.Error().Err(fsErr).Str("path", g.config.PrivohubFilesystemUsagePath).Msg("privohub: could not statfs personal drive path, falling back to tree size")
+		} else {
+			used = int64(fsUsed)
+			if total <= 0 {
+				total = int64(fsTotal)
+			}
+			switch {
+			case total > used:
+				remaining = total - used
+			default:
+				remaining = 0
+			}
+			if total <= 0 {
+				remaining = int64(fsRemaining)
+			}
+			remainingUnknown = false
+		}
+	}
+
 	qta := libregraph.Quota{
 		Used:  &used,
 		Total: &total,
