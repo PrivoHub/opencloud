@@ -35,6 +35,7 @@ pull-assets:
 	fi;
 	make -C tmp/assets/core/origin release
 	tar xfv tmp/assets/core/origin/release/web.tar.gz -C assets/core/
+	$(MAKE) privohub-patch-filesize
 	mkdir -p ../../third-party-licenses/node/web
 	tar xfv tmp/assets/core/origin/release/third-party-licenses.tar.gz -C ../../third-party-licenses/node/web/
 
@@ -42,6 +43,21 @@ pull-assets:
 download-assets:
 	rm -rf assets/core assets/apps && mkdir -p assets/core assets/apps
 	curl --fail -slL -o- https://github.com/opencloud-eu/web/releases/download/$(WEB_ASSETS_VERSION)/web.tar.gz | tar xzf - -C assets/core/
+	$(MAKE) privohub-patch-filesize
+
+# PrivoHub: the upstream SPA formats sizes with filesize({base: 10}) → decimal
+# GB. Rewrite the minified bundle to base 2, which the filesize lib resolves to
+# the IEC standard (KiB/MiB/GiB). Fails the build if the pattern is missing so
+# a web bump that changes the bundle can't silently revert to GB.
+.PHONY: privohub-patch-filesize
+privohub-patch-filesize:
+	@files=$$(grep -rl ',base:10,output:' assets/core/js); \
+	if [ -z "$$files" ]; then \
+		echo "privohub-patch-filesize: pattern ',base:10,output:' not found in assets/core/js — web bundle changed, update the patch"; \
+		exit 1; \
+	fi; \
+	sed -i 's/,base:10,output:/,base:2,output:/g' $$files; \
+	echo "privohub-patch-filesize: patched to IEC units (GiB) in: $$files"
 
 .PHONY: ci-node-save-licenses
 ci-node-save-licenses:
