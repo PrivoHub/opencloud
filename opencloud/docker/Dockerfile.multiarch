@@ -1,3 +1,20 @@
+####################### WEB CLIENT BUILD #######################
+# PrivoHub Drive ships the web client built from our own fork (source-level IEC
+# storage units in packages/web-pkg/src/helpers/filesize.ts), NOT upstream's
+# prebuilt release tarball. Building it here makes `docker build` self-contained
+# and reproducible, no host `make generate` step, and what ships is genuinely
+# the corresponding source of PrivoHub/opencloud-web, with no minified-bundle
+# patching. Keep WEB_ASSETS_REF equal to services/web/Makefile's.
+FROM node:24-bookworm AS web-build
+ARG WEB_ASSETS_REPO=https://github.com/PrivoHub/opencloud-web.git
+ARG WEB_ASSETS_REF=privohub/v7.2.0
+RUN corepack enable
+WORKDIR /web
+RUN git clone --depth 1 --branch "${WEB_ASSETS_REF}" "${WEB_ASSETS_REPO}" . && \
+    make release
+# -> /web/release/{web.tar.gz,third-party-licenses.tar.gz}
+
+####################### SERVER BUILD #######################
 FROM quay.io/opencloudeu/golang-ci:1.25 AS build
 ARG TARGETOS
 ARG TARGETARCH
@@ -7,10 +24,18 @@ ARG EDITION="dev"
 ARG SRCDIR
 
 WORKDIR /build
+# Unpack the web bundle built above into the embed dir (services/web/web.go does
+# `//go:embed all:assets`) before the Go build, so it is baked into the binary.
 RUN --mount=type=bind,target=/build,rw \
     --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache \
+    --mount=from=web-build,source=/web/release,target=/web-release,ro \
     GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH:-amd64}" ; \
+    rm -rf ${SRCDIR:-.}/services/web/assets/core ${SRCDIR:-.}/services/web/assets/apps && \
+    mkdir -p ${SRCDIR:-.}/services/web/assets/core ${SRCDIR:-.}/services/web/assets/apps && \
+    tar xf /web-release/web.tar.gz -C ${SRCDIR:-.}/services/web/assets/core/ && \
+    mkdir -p ${SRCDIR:-.}/third-party-licenses/node/web && \
+    tar xf /web-release/third-party-licenses.tar.gz -C ${SRCDIR:-.}/third-party-licenses/node/web/ && \
     make -C ${SRCDIR:-.}/opencloud release-linux-docker-${TARGETARCH} ENABLE_VIPS=true DIST=/dist
 
 FROM alpine:3.24
