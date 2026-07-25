@@ -206,9 +206,20 @@ func FrontendConfigFromStruct(cfg *config.Config, logger log.Logger) (map[string
 									"needsDbUpgrade": false,
 									"version":        version.Legacy,
 									"versionstring":  version.LegacyString,
-									"edition":        version.Edition,
-									"productname":    "OpenCloud",
-									"product":        "OpenCloud",
+									// PrivoHub: this block is the server identity the web
+									// client renders in the sidebar footer, as
+									// `${product} ${version} ${edition}` (see
+									// getBackendVersion in web-pkg/src/helpers/versions.ts).
+									// The product is ours, and the edition is blanked so the
+									// footer reads "PrivoHub Drive <version>" rather than
+									// trailing a build-channel word ("dev") that means
+									// nothing to a customer. Protocol-level server identity
+									// (the ocdav "product" below) is deliberately left as
+									// upstream so sync clients still detect an OpenCloud
+									// server.
+									"edition":        "",
+									"productname":    "PrivoHub Drive",
+									"product":        "PrivoHub Drive",
 									"productversion": version.GetString(),
 									"hostname":       "",
 								},
