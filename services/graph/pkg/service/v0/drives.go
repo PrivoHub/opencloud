@@ -965,18 +965,30 @@ func (g Graph) getDriveQuota(ctx context.Context, space *storageprovider.Storage
 		total = int64(res.TotalBytes)
 	}
 
-	// PrivoHub: report real filesystem usage for the personal drive so the figure
-	// includes Immich Photos (which shares the same ZFS dataset), not just the
-	// OpenCloud tree size. The configured path is statfs'd; its used bytes reflect
-	// the whole dataset against the refquota hard cap. Total stays the plan quota
-	// when set (it may differ from refquota after a grow-only downgrade); remaining
-	// is recomputed so the three values stay consistent.
+	// PrivoHub: the personal drive reports the tenant's plan and the real usage of
+	// the dataset behind it, which is the identical pair Photos reports (see
+	// server/src/utils/privohub-quota.ts in the Immich fork). Two numbers, two
+	// deliberately different sources:
+	//
+	//   total  PrivohubQuotaBytes, container env set by the operator from the
+	//          tenant CRD. NOT the stored space quota, which the tenant owner is
+	//          an admin of their own Drive and can raise; env is the only channel
+	//          they cannot reach. Falls back to the space quota when unset.
+	//
+	//   used   statfs of the tenant library. Photos and Drive share one ZFS
+	//          dataset, so this is combined consumption and already counts
+	//          thumbnails and transcodes, which a tree-size sum does not.
+	//
+	// Keep the arithmetic in privohub_quota_unix.go in step with the Immich fork.
 	if g.config.PrivohubFilesystemUsagePath != "" && space.GetSpaceType() == _spaceTypePersonal {
 		fsTotal, fsUsed, fsRemaining, fsErr := privohubFilesystemQuota(g.config.PrivohubFilesystemUsagePath)
 		if fsErr != nil {
 			logger.Error().Err(fsErr).Str("path", g.config.PrivohubFilesystemUsagePath).Msg("privohub: could not statfs personal drive path, falling back to tree size")
 		} else {
 			used = int64(fsUsed)
+			if g.config.PrivohubQuotaBytes > 0 {
+				total = int64(g.config.PrivohubQuotaBytes)
+			}
 			if total <= 0 {
 				total = int64(fsTotal)
 			}

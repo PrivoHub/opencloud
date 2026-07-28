@@ -46,7 +46,9 @@ type Config struct {
 
 	UserSoftDeleteRetentionTime time.Duration `yaml:"user_soft_delete_retention_time" env:"GRAPH_USER_SOFT_DELETE_RETENTION_TIME" desc:"The time after which a soft-deleted user is permanently deleted. If set to 0 (default), there is no soft delete retention time and users are deleted immediately after being soft-deleted. If set to a positive value, the user will be kept in the system for that duration before being permanently deleted." introductionVersion:"4.0.0"`
 
-	PrivohubFilesystemUsagePath string `yaml:"privohub_filesystem_usage_path" env:"PRIVOHUB_FILESYSTEM_USAGE_PATH" desc:"PrivoHub: when set, personal-drive quota reports the real filesystem usage (statfs, df-style) of this path instead of the OpenCloud tree size. The OpenCloud data dir and Immich uploads share one ZFS dataset (refquota = plan size), so statfs here reflects combined Photos + Drive consumption against the hard cap. Empty disables." introductionVersion:"6.1.0"`
+	PrivohubFilesystemUsagePath string `yaml:"privohub_filesystem_usage_path" env:"PRIVOHUB_FILESYSTEM_USAGE_PATH" desc:"PrivoHub: when set, personal-drive quota reports the real filesystem usage (statfs, df-style) of this path instead of the OpenCloud tree size. This MUST be a path on the tenant library (the customer's own content), never OC_BASE_DATA_PATH, which since the metadata split is a separate small volume holding only OpenCloud's own state. The library and Immich uploads share one ZFS dataset, so statfs here reflects combined Photos + Drive consumption. Empty disables." introductionVersion:"6.1.0"`
+
+	PrivohubQuotaBytes uint64 `yaml:"privohub_quota_bytes" env:"PRIVOHUB_QUOTA_BYTES" desc:"PrivoHub: when set, the personal drive reports this as its total instead of the stored space quota. The tenant owner is an admin of their own Drive and can edit a space quota, so the plan is delivered as container env, which they cannot reach. Zero disables." introductionVersion:"6.1.0"`
 
 	Store Store `yaml:"store"`
 }
