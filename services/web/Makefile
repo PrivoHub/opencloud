@@ -3,7 +3,7 @@ NAME := web
 
 # PrivoHub Drive builds its web client from our own fork rather than from
 # upstream's prebuilt release tarball. The only divergence from upstream is
-# source-level (IEC storage units in packages/web-pkg/src/helpers/filesize.ts),
+# source-level (storage units in packages/web-pkg/src/helpers/filesize.ts),
 # so a plain build of the fork yields a correctly-formatted, license-compliant
 # bundle with NO post-build patching of the minified assets.
 #
@@ -33,7 +33,7 @@ node-generate-prod: build-web-assets
 # Clone the PrivoHub web fork at the pinned ref, build its release tarball from
 # source, and unpack it into assets/core (+ the third-party licenses). This
 # replaces upstream's download-of-a-prebuilt-tarball + our old sed patch: the
-# IEC-units change now lives in the fork's source, so what ships is genuinely
+# storage-units change now lives in the fork's source, so what ships is genuinely
 # the corresponding source (AGPL-clean) and an upstream rebundle can't silently
 # revert it.
 .PHONY: build-web-assets
