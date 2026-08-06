@@ -1,6 +1,6 @@
 ####################### WEB CLIENT BUILD #######################
-# PrivoHub Drive ships the web client built from our own fork (source-level IEC
-# storage units in packages/web-pkg/src/helpers/filesize.ts), NOT upstream's
+# PrivoHub Drive ships the web client built from our own fork (source-level
+# storage-unit change in packages/web-pkg/src/helpers/filesize.ts), NOT upstream's
 # prebuilt release tarball. Building it here makes `docker build` self-contained
 # and reproducible, no host `make generate` step, and what ships is genuinely
 # the corresponding source of PrivoHub/opencloud-web, with no minified-bundle
