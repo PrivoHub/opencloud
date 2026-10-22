@@ -15,7 +15,7 @@ const privohubPersonalSpaceType = "personal"
 
 // applyPersonalQuota writes m.privohubPersonalQuotaBytes onto the resolved user's personal
 // storage space. It is a no-op when the user already had its quota applied within the cache
-// window. Errors do not fail the request — quota application is best-effort and retried on
+// window. Errors do not fail the request: quota application is best-effort and retried on
 // the next cache miss.
 func (m accountResolver) applyPersonalQuota(ctx context.Context, user *cs3user.User) error {
 	userID := user.GetId().GetOpaqueId()
@@ -60,7 +60,7 @@ func (m accountResolver) applyPersonalQuota(ctx context.Context, user *cs3user.U
 
 	spaces := listResp.GetStorageSpaces()
 	if len(spaces) == 0 {
-		// Personal space not yet created (first-login race) — try again on next request.
+		// Personal space not yet created (first-login race), try again on next request.
 		return nil
 	}
 	space := spaces[0]
