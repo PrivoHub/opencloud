@@ -52,7 +52,8 @@
       "defaults": {
         "logo": "themes/privohub/assets/logo.svg",
         "logoMobile": "themes/privohub/assets/logo-mobile.svg",
-        "favicon": "themes/privohub/assets/favicon.svg"
+        "favicon": "themes/privohub/assets/favicon.svg",
+        "logoPlain": "themes/privohub/assets/logo-on-light.svg"
       },
       "themes": [
         {
@@ -124,6 +125,7 @@
           "label": "Dark Theme",
           "logo": "themes/privohub/assets/logo-white.svg",
           "logoMobile": "themes/privohub/assets/logo-white-mobile.svg",
+          "logoPlain": "themes/privohub/assets/logo-white.svg",
           "designTokens": {
             "roles": {
               "primary": "#aec5ff",
