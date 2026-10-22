@@ -61,9 +61,9 @@ LABEL maintainer="PrivoHub" \
   org.opencontainers.image.authors="PrivoHub" \
   org.opencontainers.image.description="PrivoHub Drive, a privacy-respecting per-tenant fork of OpenCloud" \
   org.opencontainers.image.licenses="Apache-2.0" \
-  org.opencontainers.image.documentation="https://github.com/PrivoHub/opencloud" \
-  org.opencontainers.image.url="https://github.com/PrivoHub/opencloud" \
-  org.opencontainers.image.source="https://github.com/PrivoHub/opencloud" \
+  org.opencontainers.image.documentation="https://git.privohub.com/PrivoHub/opencloud" \
+  org.opencontainers.image.url="https://git.privohub.com/PrivoHub/opencloud" \
+  org.opencontainers.image.source="https://git.privohub.com/PrivoHub/opencloud" \
   org.opencontainers.image.version="${VERSION}" \
   org.opencontainers.image.revision="${REVISION}"
 
