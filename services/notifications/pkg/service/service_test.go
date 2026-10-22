@@ -122,7 +122,7 @@ Click here to view it: files/shares/with-me
 
 
 ---
-PrivoHub Drive — your private workspace
+PrivoHub Drive, your private workspace
 `,
 			expectedSender: sharer.GetDisplayName(),
 			done:           make(chan struct{}),
@@ -146,7 +146,7 @@ Even though this share has been revoked you still might have access through othe
 
 
 ---
-PrivoHub Drive — your private workspace
+PrivoHub Drive, your private workspace
 `,
 			expectedSender: sharer.GetDisplayName(),
 			done:           make(chan struct{}),
@@ -170,8 +170,7 @@ Even though this share has been revoked you still might have access through othe
 
 
 ---
-OpenCloud - a safe home for all your data
-https://opencloud.eu
+PrivoHub Drive, your private workspace
 `,
 			expectedSender: sharer.GetDisplayName(),
 			done:           make(chan struct{}),
@@ -194,7 +193,7 @@ Click here to view it: f/spaceid
 
 
 ---
-PrivoHub Drive — your private workspace
+PrivoHub Drive, your private workspace
 `,
 			expectedSender: sharer.GetDisplayName(),
 			done:           make(chan struct{}),
@@ -220,7 +219,7 @@ Click here to check it: f/spaceid
 
 
 ---
-PrivoHub Drive — your private workspace
+PrivoHub Drive, your private workspace
 `,
 			expectedSender: sharer.GetDisplayName(),
 			done:           make(chan struct{}),
@@ -243,7 +242,7 @@ Even though this membership has expired you still might have access through othe
 
 
 ---
-PrivoHub Drive — your private workspace
+PrivoHub Drive, your private workspace
 `,
 			expectedSender: "",
 			done:           make(chan struct{}),
@@ -358,7 +357,7 @@ Click here to view it: files/shares/with-me
 
 
 ---
-PrivoHub Drive — your private workspace
+PrivoHub Drive, your private workspace
 `,
 			expectedHTMLBody: `<!DOCTYPE html>
 <html>
@@ -387,7 +386,7 @@ PrivoHub Drive — your private workspace
                             <br>
                             <br>
                             --- <br>
-                            PrivoHub Drive — your private workspace
+                            PrivoHub Drive, your private workspace
                         </footer>
                     </td>
                 </tr>
@@ -424,7 +423,7 @@ Click here to view it: f/spaceid
 
 
 ---
-PrivoHub Drive — your private workspace
+PrivoHub Drive, your private workspace
 `,
 			expectedSender: sharer.GetDisplayName(),
 			expectedHTMLBody: `<!DOCTYPE html>
@@ -454,7 +453,7 @@ PrivoHub Drive — your private workspace
                             <br>
                             <br>
                             --- <br>
-                            PrivoHub Drive — your private workspace
+                            PrivoHub Drive, your private workspace
                         </footer>
                     </td>
                 </tr>
