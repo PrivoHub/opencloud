@@ -1,13 +1,13 @@
 ####################### WEB CLIENT BUILD #######################
-# PrivoHub Drive ships the web client built from our own fork (source-level
-# storage-unit change in packages/web-pkg/src/helpers/filesize.ts), NOT upstream's
-# prebuilt release tarball. Building it here makes `docker build` self-contained
+# PrivoHub Drive ships the web client built from our own fork (its changes are
+# all in source, see PRIVOHUB.md there), NOT upstream's prebuilt release
+# tarball. Building it here makes `docker build` self-contained
 # and reproducible, no host `make generate` step, and what ships is genuinely
 # the corresponding source of PrivoHub/opencloud-web, with no minified-bundle
 # patching. Keep WEB_ASSETS_REF equal to services/web/Makefile's.
 FROM node:24-bookworm AS web-build
 ARG WEB_ASSETS_REPO=https://github.com/PrivoHub/opencloud-web.git
-ARG WEB_ASSETS_REF=privohub/v7.2.0
+ARG WEB_ASSETS_REF=privohub/v8.1.0
 RUN corepack enable
 WORKDIR /web
 RUN git clone --depth 1 --branch "${WEB_ASSETS_REF}" "${WEB_ASSETS_REPO}" . && \

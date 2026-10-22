@@ -2,18 +2,17 @@ SHELL := bash
 NAME := web
 
 # PrivoHub Drive builds its web client from our own fork rather than from
-# upstream's prebuilt release tarball. The only divergence from upstream is
-# source-level (storage units in packages/web-pkg/src/helpers/filesize.ts),
-# so a plain build of the fork yields a correctly-formatted, license-compliant
-# bundle with NO post-build patching of the minified assets.
+# upstream's prebuilt release tarball. The fork's changes are all in source
+# (see PRIVOHUB.md there), so a plain build of the fork yields the bundle we
+# ship, license-compliant, with NO post-build patching of the minified assets.
 #
 # WEB_ASSETS_REF must stay equal to the branch name in PrivoHub/opencloud-web,
 # which itself tracks an upstream web tag (see that repo's PRIVOHUB.md). Bumping
 # the web client = repoint this ref and the fork branch together. The tag it
 # tracks is upstream's own WEB_ASSETS_VERSION for the server tag this fork sits
-# on: server v7.3.0 pairs with web v7.2.0.
+# on: server v8.1.0 pairs with web v8.1.0.
 WEB_ASSETS_REPO ?= https://github.com/PrivoHub/opencloud-web.git
-WEB_ASSETS_REF  ?= privohub/v7.2.0
+WEB_ASSETS_REF  ?= privohub/v8.1.0
 
 ifneq (, $(shell command -v go 2> /dev/null)) # suppress `command not found warnings` for non go targets in CI
 include ../../.bingo/Variables.mk
