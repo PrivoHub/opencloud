@@ -2,13 +2,13 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-# PrivoHub Drive — OpenCloud fork
+# PrivoHub Drive: OpenCloud fork
 
 This is the **PrivoHub Drive** fork of [OpenCloud](https://github.com/opencloud-eu/opencloud).
-The published image is `github.com/PrivoHub/opencloud:v{upstream}-privohub.{N}` (multi-arch
-linux/amd64, linux/arm64). The fork rebases onto upstream tags and adds a small set of additive
-commits — when none of the `PRIVOHUB_*` envs are set, the binary still behaves like vanilla
-OpenCloud. See `docs/PRIVOHUB.md` for the contract the `privohub-operator` expects.
+The image is built from `opencloud/docker/Dockerfile.multiarch`; each release's source is the
+`privohub-v{upstream}` branch of this repository. The fork rebases onto upstream tags and adds a
+small set of additive commits: when none of the `PRIVOHUB_*` envs are set, the binary still
+behaves like vanilla OpenCloud.
 
 ## PrivoHub additions on top of upstream
 
@@ -16,16 +16,16 @@ OpenCloud. See `docs/PRIVOHUB.md` for the contract the `privohub-operator` expec
 | --- | --- |
 | `PRIVOHUB_PERSONAL_QUOTA_BYTES` | Per-tenant personal-drive quota, applied on every login (cached for 5 minutes per user). Zero or unset disables. |
 | `PRIVOHUB_IDM_ADMIN_PASSWORD_FILE` | Path to a file containing the IDM admin password. Created at first boot by the entrypoint at `/var/lib/opencloud/.privohub/idm-admin`; read on every subsequent boot. The password is never logged or set via env. |
-| `WEB_OIDC_CLIENT_ID=opencloud-{tenant}` + `OCIS_OIDC_ISSUER=<keycloak-issuer>` | OIDC public-client PKCE against the per-tenant Keycloak realm. No client secret is required — proxy validates via JWKS. This is upstream-default behavior; the operator only needs to set the two envs. |
+| `WEB_OIDC_CLIENT_ID=opencloud-{tenant}` + `OCIS_OIDC_ISSUER=<keycloak-issuer>` | OIDC public-client PKCE against the per-tenant Keycloak realm. No client secret is required; the proxy validates via JWKS. This is upstream-default behavior; the operator only needs to set the two envs. |
 | `WEB_UI_THEME_PATH` | Defaults to `/themes/privohub/theme.json` in this fork (was `opencloud/`). Operators can still override. |
 
 ## Privacy posture
 
-Upstream OpenCloud has no telemetry — there is no `*_TELEMETRY` env, no analytics SDK, no
+Upstream OpenCloud has no telemetry: there is no `*_TELEMETRY` env, no analytics SDK, no
 phone-home. The single outbound hint in upstream config is a documented `feedbackLink` URL;
 this fork removes that default so the only outbound HTTP traffic from a PrivoHub Drive pod is
 to its OIDC issuer (Keycloak). Verify with `kubectl exec -- timeout 300 tcpdump -nn -i any
-'not host <issuer-ip> and not net <cluster-cidr>'` — expect zero packets.
+'not host <issuer-ip> and not net <cluster-cidr>'` and expect zero packets.
 
 # Upstream OpenCloud server backend
 
