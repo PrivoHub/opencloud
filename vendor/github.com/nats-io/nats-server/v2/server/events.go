@@ -2935,8 +2935,8 @@ func (s *Server) remoteLatencyUpdate(sub *subscription, _ *client, _ *Account, s
 	}
 	// Now get the request id / reply. We need to see if we have a GW prefix and if so strip that off.
 	reply := rl.ReqId
-	if gwPrefix, old := isGWRoutedSubjectAndIsOldPrefix([]byte(reply)); gwPrefix {
-		reply = string(getSubjectFromGWRoutedReply([]byte(reply), old))
+	if isGWRoutedReply([]byte(reply)) {
+		reply = string(getSubjectFromGWRoutedReply([]byte(reply)))
 	}
 	acc.mu.RLock()
 	si := acc.exports.responses[reply]
@@ -3025,13 +3025,15 @@ func totalSubs(rr *SublistResult, qg []byte) (nsubs int32) {
 	if rr == nil {
 		return
 	}
+	var total uint64
 	checkSub := func(sub *subscription) {
 		// TODO(dlc) - This could be smarter.
 		if qg != nil && !bytes.Equal(qg, sub.queue) {
 			return
 		}
+		// A leaf queue sub counts as the number of members it represents.
 		if sub.client.kind == CLIENT || sub.client.isHubLeafNode() {
-			nsubs++
+			total += qsubWeight(sub)
 		}
 	}
 	if qg == nil {
@@ -3044,7 +3046,7 @@ func totalSubs(rr *SublistResult, qg []byte) (nsubs int32) {
 			checkSub(sub)
 		}
 	}
-	return
+	return int32(min(total, math.MaxInt32))
 }
 
 // Allows users of large systems to debug active subscribers for a given subject.

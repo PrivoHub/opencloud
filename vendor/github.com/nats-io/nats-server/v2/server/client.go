@@ -852,6 +852,10 @@ func (c *client) RemoteAddress() net.Addr {
 // Helper function to report errors.
 func (c *client) reportErrRegisterAccount(acc *Account, err error) {
 	if err == ErrTooManyAccountConnections {
+		// Record the reason so that processConnect() can tell a real account
+		// connection limit apart from an authentication failure, instead of
+		// having to guess from the account the client is bound to.
+		c.setAuthError(err)
 		c.maxAccountConnExceeded()
 		return
 	}
@@ -1006,11 +1010,15 @@ func (c *client) applyAccountLimits() {
 // with the authenticated user. This is used to map
 // any permissions into the client and setup accounts.
 func (c *client) RegisterUser(user *User) {
+	c.registerUser(user)
+}
+
+func (c *client) registerUser(user *User) error {
 	// Register with proper account and sublist.
 	if user.Account != nil {
 		if err := c.registerWithAccount(user.Account); err != nil {
 			c.reportErrRegisterAccount(user.Account, err)
-			return
+			return err
 		}
 	}
 
@@ -1038,6 +1046,7 @@ func (c *client) RegisterUser(user *User) {
 	}
 
 	c.mu.Unlock()
+	return nil
 }
 
 // RegisterNkeyUser allows auth to call back into a new nkey
@@ -1078,11 +1087,33 @@ func (c *client) updateDefaultPermissions(perms *Permissions) bool {
 		c.perms = nil
 		c.mperms = nil
 		c.darray = nil
+		c.replies = nil
 		return true
 	}
+	var responsePermissionsUnchanged bool
+	if c.user.Permissions != nil {
+		responsePermissionsUnchanged = sameResponsePermissions(c.user.Permissions.Response, perms.Response)
+	}
+	replies := c.replies
 	c.user.Permissions = perms.clone()
 	c.setPermissions(c.user.Permissions)
+	if responsePermissionsUnchanged {
+		c.replies = replies
+	} else if c.user.Permissions.Response == nil {
+		c.replies = nil
+	}
+	for _, sub := range c.subs {
+		if len(sub.queue) > 0 {
+			c.canSubscribe(string(sub.subject), string(sub.queue))
+		} else {
+			c.canSubscribe(string(sub.subject))
+		}
+	}
 	return true
+}
+
+func sameResponsePermissions(current, updated *ResponsePermission) bool {
+	return current != nil && updated != nil && *current == *updated
 }
 
 func splitSubjectQueue(sq string) ([]byte, []byte, error) {
@@ -1591,8 +1622,9 @@ func (c *client) readLoop(pre []byte) {
 				// assigned messages and their "fsp" incremented, and need now to be
 				// decremented and their writeLoop signaled.
 				c.flushClients(0)
-				// handled inline
-				if err != ErrMaxPayload && err != ErrAuthentication {
+				// Handled inline, or the connection was already closed
+				// (e.g. account registration failure in processConnect).
+				if err != ErrMaxPayload && err != ErrAuthentication && err != ErrConnectionClosed {
 					c.Error(err)
 					c.closeConnection(ProtocolViolation)
 				}
@@ -1620,7 +1652,9 @@ func (c *client) readLoop(pre []byte) {
 			atomic.AddInt64(&c.inMsgs, inMsgs)
 			atomic.AddInt64(&c.inBytes, inBytes)
 
-			if acc != nil {
+			// A per-account route has its account set, but routed messages were
+			// already added to the account's stats in processInboundRoutedMsg.
+			if acc != nil && c.kind != ROUTER {
 				acc.stats.Lock()
 				acc.stats.inMsgs += inMsgs
 				acc.stats.inBytes += inBytes
@@ -1780,7 +1814,12 @@ func (c *client) flushOutbound() bool {
 	// Check for compression
 	cw := c.out.cw
 	if cw != nil {
-		// We will have to adjust once we have compressed, so remove for now.
+		// Replace only the bytes being compressed. Pending bytes also include
+		// already-compressed data left in wnb after a partial write.
+		attempted = 0
+		for _, buf := range collapsed {
+			attempted += int64(len(buf))
+		}
 		c.out.pb -= attempted
 		if c.isWebsocket() {
 			c.ws.fs -= attempted
@@ -2362,7 +2401,6 @@ func (c *client) processConnect(arg []byte) error {
 	if srv != nil && srv.trustedKeys == nil {
 		c.opts.JWT = _EMPTY_
 	}
-	ujwt := c.opts.JWT
 
 	// For headers both client and server need to support.
 	c.headers = supportsHeaders && c.opts.Headers
@@ -2383,24 +2421,29 @@ func (c *client) processConnect(arg []byte) error {
 		// A second CONNECT may move the client into a different account via
 		// checkAuthentication. Drop any previously-registered subscriptions
 		// from the current account first so they don't leak in that account's
-		// sublist after the client switches.
+		// sublist after the client switches. Also, clear any cached sublist
+		// results before switching accounts.
 		if !firstConnect {
+			c.in.genid = 0
+			c.in.results = nil
 			c.clearAccountSubs(false)
 		}
 
 		// Check for Auth
 		if ok := srv.checkAuthentication(c); !ok {
-			// We may fail here because we reached max limits on an account.
-			if ujwt != _EMPTY_ {
-				c.mu.Lock()
-				acc := c.acc
-				c.mu.Unlock()
-				srv.mu.Lock()
-				tooManyAccCons := acc != nil && acc != srv.gacc
-				srv.mu.Unlock()
-				if tooManyAccCons {
-					return ErrTooManyAccountConnections
-				}
+			// We may fail here because we reached the account connection limit.
+			// In that case registerWithAccount() already recorded the reason,
+			// notified the client and closed the connection, so report the
+			// limit instead of an authentication violation.
+			if c.getAuthError() == ErrTooManyAccountConnections {
+				return ErrTooManyAccountConnections
+			}
+			// Account registration failures already sent the error and closed the connection.
+			c.mu.Lock()
+			closed := c.isClosed()
+			c.mu.Unlock()
+			if closed {
+				return ErrConnectionClosed
 			}
 			c.authViolation()
 			return ErrAuthentication
@@ -3318,6 +3361,9 @@ func (c *client) addShadowSub(sub *subscription, ime *ime) (*subscription, error
 
 	im := ime.im
 	nsub.im = im
+	// A leafnode subscription's origin cluster only applies to its own account. The shadow is interest in another
+	// account, which that cluster's leaf links never saw, so it must not carry the origin to leafnodes or routes.
+	nsub.origin = nil
 
 	if !im.usePub && ime.dyn && im.tr != nil {
 		if im.rtr == nil {
@@ -3378,11 +3424,11 @@ func (c *client) canSubscribeInternal(subject string, optQueue ...string) bool {
 	}
 
 	// For CLIENT connections that are MQTT we will implicitly allow anything that starts with
-	// the "$MQTT.sub." or "$MQTT.deliver.pubrel." prefix. For other types of connections, we
+	// the "$MQTT.sub." or "$MQTT.deliver.pubrel." prefix. For other non-LEAF connections, we
 	// will implicitly allow anything that starts with the full "$MQTT." prefix. However,
 	// we don't just return here, we skip the check for "allow" but will check "deny".
 	if (c.isMqtt() && (strings.HasPrefix(subject, mqttSubPrefix) || strings.HasPrefix(subject, mqttPubRelDeliverySubjectPrefix))) ||
-		(c.kind != CLIENT && strings.HasPrefix(subject, mqttPrefix)) {
+		(c.kind != CLIENT && c.kind != LEAF && strings.HasPrefix(subject, mqttPrefix)) {
 		checkAllow = false
 	}
 	// Check allow list. If no allow list that means all are allowed. Deny can overrule.
@@ -3601,8 +3647,26 @@ func (c *client) checkDenySub(subject, queue string) bool {
 	return denied
 }
 
+// importTargetSubject returns the subject that will actually be delivered to
+// this subscription. For a shadow subscription created by a stream import, the
+// delivered subject is the import's local (post-transform) form, which can
+// differ from the subject the message was published on in the exporting
+// account. For any other subscription the subject is returned unchanged.
+func (s *subscription) importTargetSubject(subj []byte) []byte {
+	if s == nil || s.im == nil {
+		return subj
+	}
+	if s.im.tr != nil {
+		return []byte(s.im.tr.TransformSubject(bytesToString(subj)))
+	}
+	if !s.im.usePub {
+		return []byte(s.im.to)
+	}
+	return subj
+}
+
 // Create a message header for routes or leafnodes. Header and origin cluster aware.
-func (c *client) msgHeaderForRouteOrLeaf(subj, reply []byte, rt *routeTarget, acc *Account) []byte {
+func (c *client) msgHeaderForRouteOrLeaf(subj, reply []byte, rt *routeTarget, acc *Account, noOrigin bool) []byte {
 	hasHeader := c.pa.hdr > 0
 	subclient := rt.sub.client
 	canReceiveHeader := subclient.headers
@@ -3615,7 +3679,7 @@ func (c *client) msgHeaderForRouteOrLeaf(subj, reply []byte, rt *routeTarget, ac
 		// If we are coming from a leaf with an origin cluster we need to handle differently
 		// if we can. We will send a route based LMSG which has origin cluster and headers
 		// by default.
-		if c.kind == LEAF && c.remoteCluster() != _EMPTY_ {
+		if c.kind == LEAF && !noOrigin && c.remoteCluster() != _EMPTY_ {
 			subclient.mu.Lock()
 			lnoc = subclient.route.lnoc
 			subclient.mu.Unlock()
@@ -3636,14 +3700,7 @@ func (c *client) msgHeaderForRouteOrLeaf(subj, reply []byte, rt *routeTarget, ac
 		// Leaf nodes are LMSG
 		mh[0] = 'L'
 		// Remap subject if its a shadow subscription, treat like a normal client.
-		if rt.sub.im != nil {
-			if rt.sub.im.tr != nil {
-				to := rt.sub.im.tr.TransformSubject(bytesToString(subj))
-				subj = []byte(to)
-			} else if !rt.sub.im.usePub {
-				subj = []byte(rt.sub.im.to)
-			}
-		}
+		subj = rt.sub.importTargetSubject(subj)
 	}
 	mh = append(mh, subj...)
 	mh = append(mh, ' ')
@@ -3809,7 +3866,17 @@ func (c *client) deliverMsg(prodIsMQTT bool, sub *subscription, acc *Account, su
 
 	// Check if we are a leafnode and have perms to check.
 	if client.kind == LEAF && client.perms != nil {
-		subjectToCheck, _ := getGWRoutedSubjectOrSelf(subject)
+		// For a shadow subscription created by a stream import, the subject that
+		// goes on the wire is the import's local (post-transform) form, see
+		// msgHeaderForRouteOrLeaf() above. Check the permissions against that
+		// form: the exporting account's subject is never sent to the leafnode,
+		// and requiring a permission for it would grant the leafnode an
+		// unrelated capability in its own account.
+		// The import transform is applied first and an internal gateway reply
+		// prefix is stripped from its result, because the header path transforms
+		// the complete subject as well. Stripping first could authorize a
+		// subject that differs from the one placed on the wire.
+		subjectToCheck, _ := getGWRoutedSubjectOrSelf(sub.importTargetSubject(subject))
 		if !client.pubAllowedFullCheck(string(subjectToCheck), true, true) {
 			mt.addEgressEvent(client, sub, errMsgTracePubViolation)
 			client.mu.Unlock()
@@ -3985,7 +4052,7 @@ func (c *client) deliverMsg(prodIsMQTT bool, sub *subscription, acc *Account, su
 	// Also this check captures if the original reply (c.pa.reply) is a GW routed
 	// reply (since it is known to be > minReplyLen). If that is the case, we need to
 	// track the binding between the routed reply and the reply set in the message
-	// header (which is c.pa.reply without the GNR routing prefix).
+	// header (which is c.pa.reply without the _GR_ routing prefix).
 	if client.kind == CLIENT && len(c.pa.reply) > minReplyLen {
 		if gwrply {
 			// Note that we keep track of the GW routed reply in the destination
@@ -4216,10 +4283,10 @@ func (c *client) pubAllowedFullCheck(subject string, fullCheck, hasLock bool) bo
 		return v.(bool)
 	}
 	allowed, checkAllow := true, true
-	// For any connections, other than CLIENT, we will implicitly allow anything that
+	// For any connections, other than CLIENT and LEAF, we will implicitly allow anything that
 	// starts with the "$MQTT." prefix. However, we don't just return here,
 	// we skip the check for "allow" but will check "deny".
-	if c.kind != CLIENT && strings.HasPrefix(subject, mqttPrefix) {
+	if c.kind != CLIENT && c.kind != LEAF && strings.HasPrefix(subject, mqttPrefix) {
 		checkAllow = false
 	}
 	// Cache miss, check allow then deny as needed.
@@ -4324,10 +4391,8 @@ func isReservedReply(reply []byte) bool {
 	// Faster to check with string([:]) than byte-by-byte
 	if isJSAckSubject(reply) {
 		return true
-	} else if len(reply) > gwReplyPrefixLen && bytesToString(reply[:gwReplyPrefixLen]) == gwReplyPrefix {
-		return true
 	}
-	return false
+	return hasGWRoutedReplyPrefix(reply)
 }
 
 // This will decide to call the client code or router code.
@@ -4367,7 +4432,7 @@ func (c *client) processInboundClientMsg(msg []byte) (bool, bool) {
 	c.in.msgs++
 	c.in.bytes += int32(len(msg) - LEN_CR_LF)
 
-	// Check that client (could be here with SYSTEM) is not publishing on reserved "$GNR" prefix.
+	// Check that client (could be here with SYSTEM) is not publishing on reserved "_GR_" or legacy "$GR" prefix.
 	if c.kind == CLIENT && hasGWRoutedReplyPrefix(c.pa.subject) {
 		c.pubPermissionViolation(c.pa.subject)
 		return false, true
@@ -4574,9 +4639,9 @@ func (c *client) handleGWReplyMap(msg []byte) bool {
 }
 
 // Used to setup the response map for a service import request that has a reply subject.
-func (c *client) setupResponseServiceImport(acc *Account, si *serviceImport, tracking bool, header http.Header) *serviceImport {
+func (c *client) setupResponseServiceImport(acc *Account, si *serviceImport, hasLatency, tracking bool, header http.Header) *serviceImport {
 	rsi := si.acc.addRespServiceImport(acc, string(c.pa.reply), si, tracking, header, nil)
-	if si.latency != nil {
+	if hasLatency {
 		if c.rtt == 0 {
 			// We have a service import that we are tracking but have not established RTT.
 			c.sendRTTPing()
@@ -4863,16 +4928,17 @@ func (c *client) processServiceImport(si *serviceImport, acc *Account, msg []byt
 	if (c.kind == GATEWAY || c.kind == ROUTER) && !isResponse {
 		return false
 	}
+	// We need to protect `si` fields with account's read lock.
+	acc.mu.RLock()
 	// Detect cycles and ignore (return) when we detect one.
 	if len(c.pa.psi) > 0 {
 		for i := len(c.pa.psi) - 1; i >= 0; i-- {
 			if psi := c.pa.psi[i]; psi.se == si.se {
+				acc.mu.RUnlock()
 				return false
 			}
 		}
 	}
-
-	acc.mu.RLock()
 	var checkJS bool
 	shouldReturn := si.invalid || acc.sl == nil
 	if !shouldReturn && !isResponse && si.to == jsAllAPI {
@@ -4883,14 +4949,26 @@ func (c *client) processServiceImport(si *serviceImport, acc *Account, msg []byt
 	siAcc := si.acc
 	allowTrace := si.atrc
 	isMsgTraceResp := isResponse && si.mt != nil
+	siSe := si.se
+	siLat := si.latency
 	acc.mu.RUnlock()
 
 	// We have a special case where JetStream pulls in all service imports through one export.
 	// However the GetNext for consumers and DirectGet for streams are a no-op and causes buildups of service imports,
 	// response service imports and rrMap entries which all will need to simply expire.
 	// TODO(dlc) - Come up with something better.
-	if shouldReturn || (checkJS && si.se != nil && si.se.acc == c.srv.SystemAccount()) {
+	if shouldReturn {
 		return false
+	}
+	if checkJS && siSe != nil {
+		// siSe.acc is updated by configureAccounts() under the exporting
+		// account's lock (siAcc), so read it under that lock.
+		siAcc.mu.RLock()
+		viaSysAcc := siSe.acc == c.srv.SystemAccount()
+		siAcc.mu.RUnlock()
+		if viaSysAcc {
+			return false
+		}
 	}
 
 	mt, traceOnly := c.isMsgTraceEnabled()
@@ -4899,13 +4977,13 @@ func (c *client) processServiceImport(si *serviceImport, acc *Account, msg []byt
 	var rsi *serviceImport
 
 	// Check if there is a reply present and set up a response.
-	tracking, headers := shouldSample(si.latency, c)
+	tracking, headers := shouldSample(siLat, c)
 	if len(c.pa.reply) > 0 {
 		// Special case for now, need to formalize.
 		// TODO(dlc) - Formalize as a service import option for reply rewrite.
 		// For now we can't do $JS.ACK since that breaks pull consumers across accounts.
 		if !bytes.HasPrefix(c.pa.reply, []byte(jsAckPre)) {
-			if rsi = c.setupResponseServiceImport(acc, si, tracking, headers); rsi != nil {
+			if rsi = c.setupResponseServiceImport(acc, si, siLat != nil, tracking, headers); rsi != nil {
 				nrr = []byte(rsi.from)
 			}
 		} else {
@@ -4913,7 +4991,7 @@ func (c *client) processServiceImport(si *serviceImport, acc *Account, msg []byt
 			// Normally this code is not called.
 			nrr = c.pa.reply
 		}
-	} else if !isResponse && si.latency != nil && tracking {
+	} else if !isResponse && siLat != nil && tracking {
 		// Check to see if this was a bad request with no reply and we were supposed to be tracking.
 		siAcc.sendBadRequestTrackingLatency(si, c, headers)
 	}
@@ -5162,6 +5240,26 @@ func (c *client) processServiceImport(si *serviceImport, acc *Account, msg []byt
 	return didDeliver
 }
 
+// isLeafEcho reports whether delivering to sub would send a message back where it came from.
+func (c *client) isLeafEcho(sub *subscription, leafOrigin string, importedFromService bool) bool {
+	return (leafOrigin != _EMPTY_ || importedFromService || sub.im != nil) && c.checkLeafEcho(sub, leafOrigin, importedFromService)
+}
+
+// Imported messages may go back to their origin leafnode cluster, which never saw them in this account.
+func (c *client) checkLeafEcho(sub *subscription, leafOrigin string, importedFromService bool) bool {
+	dc := sub.client
+	if sub.im == nil && !importedFromService {
+		return leafOrigin != _EMPTY_ && leafOrigin == dc.remoteCluster()
+	}
+	// Returning it to the hub it came from lets imports on both sides loop it.
+	if !c.isSpokeLeafNode() || !dc.isSpokeLeafNode() {
+		return false
+	}
+	// Unnamed hubs advertise an empty cluster name even when clustered, so treat that as possibly the same hub.
+	rc, drc := c.remoteCluster(), dc.remoteCluster()
+	return rc == _EMPTY_ || drc == _EMPTY_ || rc == drc
+}
+
 func (c *client) addSubToRouteTargets(sub *subscription) {
 	if c.in.rts == nil {
 		c.in.rts = make([]routeTarget, 0, routeTargetInit)
@@ -5343,6 +5441,7 @@ func (c *client) processMsgResults(acc *Account, r *SublistResult, msg, deliver,
 	}
 
 	mt, traceOnly := c.isMsgTraceEnabled()
+	importedFromService := flags&pmrMsgImportedFromService != 0
 
 	// Loop over all normal subscriptions that match.
 	for _, sub := range r.psubs {
@@ -5380,7 +5479,7 @@ func (c *client) processMsgResults(acc *Account, r *SublistResult, msg, deliver,
 		// Check for stream import mapped subs (shadow subs). These apply to local subs only.
 		if sub.im != nil {
 			// If this message was a service import do not re-export to an exported stream.
-			if flags&pmrMsgImportedFromService != 0 {
+			if importedFromService {
 				continue
 			}
 			if sub.im.tr != nil {
@@ -5467,6 +5566,10 @@ func (c *client) processMsgResults(acc *Account, r *SublistResult, msg, deliver,
 	case LEAF:
 		leafOrigin = c.remoteCluster()
 	}
+	// The leafnode cluster never published a service-imported message in this account.
+	if importedFromService {
+		leafOrigin = _EMPTY_
+	}
 
 	// For all routes/leaf/gateway connections, we may still want to send messages to
 	// leaf nodes or routes even if there are no queue filters since we collect
@@ -5498,30 +5601,40 @@ func (c *client) processMsgResults(acc *Account, r *SublistResult, msg, deliver,
 		var rsub, sub *subscription
 		var _ql [32]*subscription
 
+		// Weighted remote qsubs are at the front of the queue group.
+		var nw int
+		if i < len(r.qwn) {
+			nw = r.qwn[i]
+		}
+
 		src := c.kind
 		// If we just came from a route we want to prefer local subs.
 		// So only select from local subs but remember the first rsub
 		// in case all else fails.
 		if src == ROUTER {
 			ql := _ql[:0]
+			// Total queue weight of the rsub candidates seen so far.
+			var lw uint64
 			for i := 0; i < len(qsubs); i++ {
 				sub = qsubs[i]
 				if dst := sub.client.kind; dst == LEAF || dst == ROUTER {
 					// If the destination is a LEAF, we first need to make sure
 					// that we would not pick one that was the origin of this
 					// message.
-					if dst == LEAF && leafOrigin != _EMPTY_ && leafOrigin == sub.client.remoteCluster() {
+					if dst == LEAF && c.isLeafEcho(sub, leafOrigin, importedFromService) {
 						continue
 					}
 					// If we have assigned a ROUTER rsub already, replace if
 					// the destination is a LEAF since we want to favor that.
 					if rsub == nil || (rsub.client.kind == ROUTER && dst == LEAF) {
-						rsub = sub
+						rsub, lw = sub, qsubWeight(sub)
 					} else if dst == LEAF {
 						// We already have a LEAF and this is another one.
-						// Flip a coin to see if we swap it or not.
+						// Swap it with a chance relative to its queue weight.
 						// See https://github.com/nats-io/nats-server/issues/6040
-						if rand.Uint32()%2 == 1 {
+						w := qsubWeight(sub)
+						lw += w
+						if rand.Uint64N(lw) < w {
 							rsub = sub
 						}
 					}
@@ -5529,13 +5642,14 @@ func (c *client) processMsgResults(acc *Account, r *SublistResult, msg, deliver,
 					ql = append(ql, sub)
 				}
 			}
-			qsubs = ql
+			// Only local subs remain, which all have weight 1.
+			qsubs, nw = ql, 0
 		}
 
 		sindex := 0
 		lqs := len(qsubs)
 		if lqs > 1 {
-			sindex = int(rand.Uint32() % uint32(lqs))
+			sindex = weightedQSubIndex(qsubs, nw)
 		}
 
 		// Find a subscription that is able to deliver this message starting at a random index.
@@ -5563,7 +5677,7 @@ func (c *client) processMsgResults(acc *Account, r *SublistResult, msg, deliver,
 				if (src == LEAF || src == CLIENT) && dst == LEAF {
 					// If we come from a LEAF and are about to pick a LEAF connection,
 					// make sure this is not the same leaf cluster.
-					if src == LEAF && leafOrigin != _EMPTY_ && leafOrigin == sub.client.remoteCluster() {
+					if src == LEAF && c.isLeafEcho(sub, leafOrigin, importedFromService) {
 						continue
 					}
 					// Remember that leaf in case we don't find any other candidate.
@@ -5606,7 +5720,7 @@ func (c *client) processMsgResults(acc *Account, r *SublistResult, msg, deliver,
 			// Check for stream import mapped subs. These apply to local subs only.
 			if sub.im != nil {
 				// If this message was a service import do not re-export to an exported stream.
-				if flags&pmrMsgImportedFromService != 0 {
+				if importedFromService {
 					continue
 				}
 				if sub.im.tr != nil {
@@ -5649,7 +5763,7 @@ func (c *client) processMsgResults(acc *Account, r *SublistResult, msg, deliver,
 			var delivered bool
 			if !skipDelivery {
 				mh := c.msgHeader(dsubj, creply, sub)
-				delivered = c.deliverMsg(prodIsMQTT, sub, acc, subject, creply, mh, msg, rplyHasGWPrefix)
+				delivered = c.deliverMsg(prodIsMQTT, sub, acc, dsubj, creply, mh, msg, rplyHasGWPrefix)
 				if restorePaTrace {
 					c.pa.trace = mt
 				}
@@ -5722,10 +5836,8 @@ sendToRoutesOrLeafs:
 		// If so make sure we do not send it back to the same cluster for a different
 		// leafnode. Cluster wide no echo.
 		if dc.kind == LEAF {
-			// Check two scenarios. One is inbound from a route (c.pa.origin),
-			// and the other is leaf to leaf. In both case, leafOrigin is the one
-			// to use for the comparison.
-			if leafOrigin != _EMPTY_ && leafOrigin == dc.remoteCluster() {
+			// leafOrigin covers both inbound from a route (c.pa.origin) and leaf to leaf.
+			if c.isLeafEcho(rt.sub, leafOrigin, importedFromService) {
 				continue
 			}
 
@@ -5745,7 +5857,7 @@ sendToRoutesOrLeafs:
 			hset = true
 		}
 
-		mh := c.msgHeaderForRouteOrLeaf(subject, reply, rt, acc)
+		mh := c.msgHeaderForRouteOrLeaf(subject, reply, rt, acc, importedFromService)
 		if c.deliverMsg(prodIsMQTT, rt.sub, acc, subject, reply, mh, dmsg, false) {
 			if flags&pmrCollectQueueNames != 0 {
 				for _, qsub := range rt.qsubs {
